@@ -151,7 +151,10 @@ def starts_with_number(chemical_formula_substring):
 
 
 def get_num_digits_in(positive_integer):
-    return math.floor(math.log(positive_integer, 10) + 1)
+    i = 1
+    while 10**i <= positive_integer:
+        i += 1
+    return i
 
 
 def get_next_number(chemical_formula_substring):
@@ -159,27 +162,46 @@ def get_next_number(chemical_formula_substring):
 
 
 def find_molar_mass(chemical_formula_string):
+    return find_molar_mass_parenthetical_subgroup(chemical_formula_string)['mass']
+
+
+def find_molar_mass_parenthetical_subgroup(chemical_formula_substring):
     cumulative_mass = 0
     i = 0  # tracks current position while iterating through string
-    while i < len(chemical_formula_string):
-        if starts_with_element(chemical_formula_string[i:]):
-            elt = get_next_element(chemical_formula_string[i:])
+    while i < len(chemical_formula_substring):
+        if starts_with_element(chemical_formula_substring[i:]):
+            elt = get_next_element(chemical_formula_substring[i:])
             elt_mass = mass_table[elt]
             i += len(elt)
+
             multiplier = 1
-            if starts_with_number(chemical_formula_string[i:]):
-                multiplier = get_next_number(chemical_formula_string[i:])
+            if starts_with_number(chemical_formula_substring[i:]):
+                multiplier = get_next_number(chemical_formula_substring[i:])
                 i += get_num_digits_in(multiplier)
             cumulative_mass += elt_mass * multiplier
+
+        elif chemical_formula_substring[i] == '(':
+            i += 1
+            group_info = find_molar_mass_parenthetical_subgroup(chemical_formula_substring[i:])
+            group_mass = group_info['mass']
+            i += group_info['num_chars_parsed']
+
+            multiplier = 1
+            if starts_with_number(chemical_formula_substring[i:]):
+                multiplier = get_next_number(chemical_formula_substring[i:])
+                i += get_num_digits_in(multiplier)
+            cumulative_mass += group_mass * multiplier
+
+        elif chemical_formula_substring[i] == ')':
+            i += 1
+            break
         else:
-            raise NotImplementedError
-    return cumulative_mass
-
-
-def find_molar_mass_parenthetical_subgroup(chemical_forumula_substring):
-    return 0
+            raise SyntaxError('Unexpected case')
+    return {
+        'mass': cumulative_mass,
+        'num_chars_parsed': i,
+    }
 
 
 if '__main__' == __name__:
-    print(find_molar_mass(sys.argv[1:]))
     print(find_molar_mass(sys.argv[1]))
