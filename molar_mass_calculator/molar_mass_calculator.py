@@ -1,4 +1,10 @@
-# A condensed version of the Periodic Table data at https://github.com/Bowserinator/Periodic-Table-JSON/blob/master/PeriodicTableJSON.json
+import re as ree  # python built-in regex library
+import string
+import math
+import sys  # for accepting command-line input
+
+# A condensed version of the Periodic Table data at:
+# https://github.com/Bowserinator/Periodic-Table-JSON/blob/master/PeriodicTableJSON.json
 mass_table = {
     'H': 1.008,
     'He': 4.0026022,
@@ -118,8 +124,62 @@ mass_table = {
     'Lv': 293,
     'Ts': 294,
     'Og': 294,
-    'Uue': 315
+    'Uue': 315,
 }
 
+
+def starts_with_element(chemical_formula_substring):
+    if len(chemical_formula_substring) < 1:
+        return False
+    else:
+        return chemical_formula_substring[0] in string.ascii_uppercase
+    # or:
+    # return ree.match('[A-Z]', chemical_formula_substring) is not None
+
+
+def get_next_element(chemical_formula_substring):
+    return ree.match('([A-Z][a-z]?)', chemical_formula_substring).group()
+
+
+def starts_with_number(chemical_formula_substring):
+    if len(chemical_formula_substring) < 1:
+        return False
+    else:
+        return chemical_formula_substring[0] in '0123456789'
+    # or:
+    # return ree.match('[0-9]', chemical_formula_substring) is not None
+
+
+def get_num_digits_in(positive_integer):
+    return math.floor(math.log(positive_integer, 10) + 1)
+
+
+def get_next_number(chemical_formula_substring):
+    return int(ree.match('([0-9]+)', chemical_formula_substring).group())
+
+
 def find_molar_mass(chemical_formula_string):
-    pass
+    cumulative_mass = 0
+    i = 0  # tracks current position while iterating through string
+    while i < len(chemical_formula_string):
+        if starts_with_element(chemical_formula_string[i:]):
+            elt = get_next_element(chemical_formula_string[i:])
+            elt_mass = mass_table[elt]
+            i += len(elt)
+            multiplier = 1
+            if starts_with_number(chemical_formula_string[i:]):
+                multiplier = get_next_number(chemical_formula_string[i:])
+                i += get_num_digits_in(multiplier)
+            cumulative_mass += elt_mass * multiplier
+        else:
+            raise NotImplementedError
+    return cumulative_mass
+
+
+def find_molar_mass_parenthetical_subgroup(chemical_forumula_substring):
+    return 0
+
+
+if '__main__' == __name__:
+    print(find_molar_mass(sys.argv[1:]))
+    print(find_molar_mass(sys.argv[1]))
