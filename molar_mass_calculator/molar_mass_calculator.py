@@ -138,7 +138,8 @@ def starts_with_element(chemical_formula_substring):
 
 
 def get_next_element(chemical_formula_substring):
-    return ree.match('([A-Z][a-z]?)', chemical_formula_substring).group()
+    # Caution: should match symbols of 3+ letters, e.g. Uue (119)
+    return ree.match('([A-Z][a-z]*)', chemical_formula_substring).group()
 
 
 def starts_with_number(chemical_formula_substring):
@@ -158,11 +159,11 @@ def get_num_digits_in(positive_integer):
 
 
 def get_next_number(chemical_formula_substring):
-    return int(ree.match('([0-9]+)', chemical_formula_substring).group())
+    return int(get_next_number_s(chemical_formula_substring))
 
 
-def find_molar_mass(chemical_formula_string):
-    return find_molar_mass_parenthetical_subgroup(chemical_formula_string)['mass']
+def get_next_number_s(chemical_formula_substring):
+    return ree.match('([0-9]+)', chemical_formula_substring).group()
 
 
 def find_molar_mass_parenthetical_subgroup(chemical_formula_substring):
@@ -201,6 +202,72 @@ def find_molar_mass_parenthetical_subgroup(chemical_formula_substring):
         'mass': cumulative_mass,
         'num_chars_parsed': i,
     }
+
+
+def element_counts_from_chemical_formula(chemical_formula_string):
+    stack_l = []  # a list, though we choose to use only its stack methods pop() and append()
+    # each element on the stack will be an unfinished dict corresponding to a "blob" at that
+
+    current_dict = {}
+    i = 0  # tracks current position while iterating through string
+    while i < len(chemical_formula_string):
+        if starts_with_element(chemical_formula_string[i:]):
+            elt = get_next_element(chemical_formula_string[i:])
+            i += len(elt)
+
+            multiplier = 1
+            if starts_with_number(chemical_formula_string[i:]):
+                multiplier_s = get_next_number_s(chemical_formula_string[i:])
+                multiplier = int(multiplier_s)
+                i += len(multiplier_s)
+            current_dict[elt] = multiplier
+
+        elif chemical_formula_string[i] == '(':
+            i += 1
+            stack_l.append(current_dict)
+            current_dict = {}
+
+        elif chemical_formula_string[i] == ')':
+            i += 1
+            if starts_with_number(chemical_formula_string[i:]):
+                multiplier_s = get_next_number_s(chemical_formula_string[i:])
+                i += len(multiplier_s)
+                multiplier = int(multiplier_s)
+                for k, v in current_dict.items():
+                    current_dict[k] = v * multiplier
+            tmp = current_dict
+            current_dict = stack_l.pop()
+            for k, v in tmp.items():
+                if k in current_dict:
+                    current_dict[k] += v
+                else:
+                    current_dict[k] = v
+
+        else:
+            raise SyntaxError('Unexpected case')
+
+    assert len(stack_l) == 0
+    return current_dict
+
+
+def mass_from_dict(d):
+    current_mass = 0
+    for k, v in d:
+        current_mass += mass_table[k] * v
+    return current_mass
+
+
+def find_molar_mass(chemical_formula_string):
+    # Option A:
+    # return find_molar_mass_parenthetical_subgroup(chemical_formula_string)['mass']
+
+    # Option B:
+    d = element_counts_from_chemical_formula(chemical_formula_string)
+    # s = simplified_formula_from_element_counts(d)
+    m = mass_from_dict(d)
+    # m2 = mass_from_simplified_string(s)
+    # assert m == m2
+    return m
 
 
 if '__main__' == __name__:
