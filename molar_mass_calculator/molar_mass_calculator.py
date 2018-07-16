@@ -250,11 +250,39 @@ def element_counts_from_chemical_formula(chemical_formula_string):
     return current_dict
 
 
+def simplified_formula_from_element_counts(d):
+    # Using https://en.wikipedia.org/wiki/Chemical_formula#Hill_system
+    s = ''
+    if 'C' in d:
+        s += 'C' + str(d.pop('C'))  # get value & remove 'C' from dict d
+    if 'H' in d:
+        s += 'H' + str(d.pop('H'))
+    for k in sorted(d.keys()):
+        s += k + str(d.pop(k))
+    return s
+
+
+def prettified_formula(s):
+    for pos in range(0, len(s)):
+        if s[pos] in string.digits:
+            new_char = '₀₁₂₃₄₅₆₇₈₉'[int(s[pos])]
+            s = s[0:pos] + new_char + s[pos+1:]
+    return s
+
+
 def mass_from_dict(d):
     current_mass = 0
-    for k, v in d:
+    for k, v in d.items():
         current_mass += mass_table[k] * v
     return current_mass
+
+
+def mass_from_simplified_string(s):
+    d = {}
+    matches = ree.findall('([A-Z][a-z]*)([0-9]*)', s)
+    for (elt, n) in matches:
+        d[elt] = int(n)
+    return mass_from_dict(d)
 
 
 def find_molar_mass(chemical_formula_string):
@@ -263,10 +291,12 @@ def find_molar_mass(chemical_formula_string):
 
     # Option B:
     d = element_counts_from_chemical_formula(chemical_formula_string)
-    # s = simplified_formula_from_element_counts(d)
     m = mass_from_dict(d)
-    # m2 = mass_from_simplified_string(s)
-    # assert m == m2
+
+    s = simplified_formula_from_element_counts(d)
+    print(prettified_formula(s))
+    m2 = mass_from_simplified_string(s)
+    assert m == m2
     return m
 
 
